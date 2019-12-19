@@ -1,75 +1,58 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using CRUDforCar.Interfaces;
 using CRUDforCar.Models;
-using Microsoft.EntityFrameworkCore;
 
 namespace CRUDforCar.Services
 {
-    public class CarsPostgresService : ICarsDBService
+    public class CarsPostgresService : IRepositoryCar
     {
-        private CarPostgresContext _db;
+        public CarsPostgresContext _db;
 
-        public CarsPostgresService(ICarsDatabaseSettings settings)
+        /// <summary>
+        /// Сервис работы с базой данных Postgres
+        /// </summary>
+        /// <param name="context">Контекст БД</param>
+        public CarsPostgresService(CarsPostgresContext context)
         {
-            _db = new CarPostgresContext(settings);
+            _db = context;
         }
 
-        #region Create
-
-        public Car Create(Car car)
+        public IEnumerable<Car> GetItemList()
         {
-            _db.Cars.Add(car);
+            return _db.Cars;
+        }
+
+        public Car GetItem(string id)
+        {
+            return _db.Cars.FirstOrDefault(car => car.CarId == id);
+        }
+
+        public void Create(Car item)
+        {
+            _db.Cars.Add(item);
             _db.SaveChanges();
-            return car;
         }
 
-        #endregion
-
-        #region Read
-
-        public List<Car> Get() =>
-            _db.Cars.ToList();
-
-        public Car Get(string id) =>
-            _db.Cars.FirstOrDefault( car => car.CarId == id);
-
-        #endregion
-
-        #region Update
-
-        public void Update(string id, Car carIn)
+        public void Update(Car item)
         {
-            var car = _db.Cars.FirstOrDefault(car => car.CarId == id);
+            var car = _db.Cars.FirstOrDefault(car => car.CarId == item.CarId);
             if (car != null)
             {
-                car.CarName = carIn.CarName ?? car.CarName;
-                car.Description = carIn.Description ?? car.Description;
+                car.CarName = item.CarName ?? car.CarName;
+                car.Description = item.Description ?? car.Description;
 
                 _db.Cars.Update(car);
+                _db.SaveChanges();
             }
         }
 
-        #endregion
-
-        #region Delete
-
-        public void Remove(Car carIn)
-        {
-            _db.Cars.RemoveRange(_db.Cars);
-            _db.SaveChanges();
-        }
-            
-
-        public void Remove(string id)
+        public void Delete(string id)
         {
             var car = _db.Cars.FirstOrDefault(car => car.CarId == id);
-            _db.Cars.Remove(car);
+            if (car != null)
+                _db.Cars.Remove(car);
             _db.SaveChanges();
         }
-
-        #endregion
     }
 }

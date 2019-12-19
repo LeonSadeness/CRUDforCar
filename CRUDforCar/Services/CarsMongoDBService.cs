@@ -1,68 +1,58 @@
 ﻿using CRUDforCar.Interfaces;
 using CRUDforCar.Models;
-using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace CRUDforCar.Services
 {
-    public class CarsMongoDBService : ICarsDBService
+    public class CarsMongoDBService : IRepositoryCar
     {
         private readonly IMongoCollection<Car> _db;
 
-        public CarsMongoDBService(ICarsDatabaseSettings settings)
+        /// <summary>
+        /// Сервис работы с БД MongoDB
+        /// </summary>
+        /// <param name="con">Строка подключения</param>
+        /// <param name="db">Имя базы данных</param>
+        /// <param name="col">Имя коллекции</param>
+        public CarsMongoDBService(string con, string db, string col)
         {
-            var client = new MongoClient(settings.ConnectionString);
-            var database = client.GetDatabase(settings.DatabaseName);
-
-            _db = database.GetCollection<Car>(settings.ItemCollectionName);
+            var client = new MongoClient(con);
+            var database = client.GetDatabase(db);
+            _db = database.GetCollection<Car>(col);
         }
 
-        #region Create
-
-        public Car Create(Car car)
+        public IEnumerable<Car> GetItemList()
         {
-            _db.InsertOne(car);
-            return car;
+            return _db.Find(car => true).ToEnumerable();
         }
 
-        #endregion
-
-        #region Read
-
-        public List<Car> Get() =>
-            _db.Find(car => true).ToList();
-
-        public Car Get(string id) =>
-            _db.Find<Car>(car => car.CarId == id).FirstOrDefault();
-
-        #endregion
-
-        #region Update
-
-        public void Update(string id, Car carIn)
+        public Car GetItem(string id)
         {
-            Car finded = _db.Find<Car>(car => car.CarId == id).FirstOrDefault();
+            return _db.Find(car => car.CarId == id ).FirstOrDefault();
+        }
+
+        public void Create(Car item)
+        {
+            _db.InsertOne(item);
+        }
+
+        public void Update(Car item)
+        {
+            Car finded = _db.Find(car => car.CarId == item.CarId).FirstOrDefault();
             if (finded != null)
             {
-                finded.CarName = carIn.CarName ?? finded.CarName;
-                finded.Description = carIn.Description ?? finded.Description;
+                finded.CarName = item.CarName ?? finded.CarName;
+                finded.Description = item.Description ?? finded.Description;
 
-                _db.ReplaceOne(car => car.CarId == id, finded);
+                _db.ReplaceOne(car => car.CarId == item.CarId, finded);
             }
         }
 
-        #endregion
-
-        #region Delete
-
-        public void Remove(Car carIn) =>
-            _db.DeleteOne(car => car.CarId == carIn.CarId);
-
-        public void Remove(string id) =>
+        public void Delete(string id)
+        {
             _db.DeleteOne(car => car.CarId == id);
-
-        #endregion
+        }
     }
 }

@@ -3,10 +3,12 @@ using CRUDforCar.Models;
 using CRUDforCar.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using MongoDB.Driver;
 
 namespace CRUDforCar
 {
@@ -22,21 +24,21 @@ namespace CRUDforCar
         // Этот метод вызывается во время выполнения. Используйте этот метод для добавления сервисов в контейнер.
         public void ConfigureServices(IServiceCollection services)
         {
-            string DB = Configuration["UseDB"].ToLower();
+            string useDb = Configuration["UseDB"].ToLower();
+            string stringConnect = Configuration.GetConnectionString(useDb);
+            string nameDb = Configuration["NameDb"];
+            string collection = Configuration["Collection"];
 
-            if (DB.StartsWith("mongo"))
+            if (useDb.StartsWith("mongo"))
             {
-                services.Configure<CarsDatabaseSettings>(Configuration.GetSection("MongoDbSettings"));
-                services.AddSingleton<ICarsDatabaseSettings>(sp => sp.GetRequiredService<IOptions<CarsDatabaseSettings>>().Value);
-
-                services.AddSingleton<ICarsDBService>(sp => new CarsMongoDBService(sp.GetService<ICarsDatabaseSettings>()));
+                var serviceDB = new CarsMongoDBService(stringConnect, nameDb, collection);
+                services.AddSingleton<IRepositoryCar, CarsMongoDBService>(sp => serviceDB);
             }
-            else if (DB.StartsWith("postgre"))
+            else if (useDb.StartsWith("postgre"))
             {
-                services.Configure<CarsDatabaseSettings>(Configuration.GetSection("PostgresSettings"));
-                services.AddSingleton<ICarsDatabaseSettings>(sp => sp.GetRequiredService<IOptions<CarsDatabaseSettings>>().Value);
-
-                services.AddSingleton<ICarsDBService>(sp => new CarsPostgresService(sp.GetService<ICarsDatabaseSettings>()));
+                services.AddEntityFrameworkNpgsql().AddDbContext<CarsPostgresContext>(opt =>
+                opt.UseNpgsql(stringConnect));
+                services.AddScoped<IRepositoryCar, CarsPostgresService>();
             }
             else
             {
